@@ -106,7 +106,7 @@ const newScript = `<script>
       });
 
       if (continuarButtons.length > 0) {
-        // Step HAS a Continuar button. Options just toggle selection, do not advance.
+        // Step HAS a Continuar button. Options do not advance, wait for Continuar.
         allOptions.forEach(opt => {
           opt.removeAttribute('onclick');
           const clone = opt.cloneNode(true);
@@ -115,6 +115,21 @@ const newScript = `<script>
           clone.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            
+            const stepText = stepEl.textContent.toLowerCase();
+            const isMulti = stepText.includes('todas las que') || stepText.includes('todas as que') || stepText.includes('mais de uma');
+
+            if (!isMulti) {
+              // Unselect others for single-choice
+              stepEl.querySelectorAll('.selected').forEach(current => {
+                if (current !== clone) {
+                  current.classList.remove('selected');
+                  current.style.border = '';
+                  current.style.backgroundColor = '';
+                }
+              });
+            }
+
             if (clone.classList.contains('selected')) {
               clone.classList.remove('selected');
               clone.style.opacity = '1';
