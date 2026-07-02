@@ -222,12 +222,87 @@ const newScript = `<script>
           });
         });
       }
+
+      // --- 4. Fix Sliders (Roleta de kg/peso/altura) ---
+      stepEl.querySelectorAll('.swiper').forEach(swiperContainer => {
+          const wrapper = swiperContainer.querySelector('.swiper-wrapper');
+          if (!wrapper) return;
+          
+          wrapper.style.display = 'flex';
+          wrapper.style.overflowX = 'auto';
+          wrapper.style.scrollSnapType = 'x mandatory';
+          wrapper.style.setProperty('transform', 'none', 'important');
+          
+          // Add a custom class for hiding scrollbars (we will inject the css once)
+          wrapper.classList.add('custom-hide-scroll');
+          
+          const slides = Array.from(wrapper.querySelectorAll('.swiper-slide'));
+          slides.forEach(slide => slide.style.scrollSnapAlign = 'center');
+          
+          // Find the big text element nearby (the text-4xl span)
+          const bigText = swiperContainer.closest('div.relative, div.w-full').parentElement.querySelector('span.text-4xl');
+          if (!bigText) return;
+          
+          // Set initial position based on active slide
+          const activeSlide = wrapper.querySelector('.swiper-slide-active') || slides[Math.floor(slides.length / 2)];
+          
+          const updateSlider = () => {
+             const wrapperCenter = wrapper.getBoundingClientRect().left + wrapper.offsetWidth / 2;
+             let closestSlide = null;
+             let minDiff = Infinity;
+             
+             slides.forEach(slide => {
+                 const rect = slide.getBoundingClientRect();
+                 const slideCenter = rect.left + rect.width / 2;
+                 const diff = Math.abs(slideCenter - wrapperCenter);
+                 if (diff < minDiff) {
+                     minDiff = diff;
+                     closestSlide = slide;
+                 }
+             });
+             
+             if (closestSlide) {
+                 const index = slides.indexOf(closestSlide);
+                 const firstSpan = wrapper.querySelector('.swiper-slide span');
+                 if (firstSpan) {
+                     const baseNum = parseInt(firstSpan.textContent, 10); 
+                     const baseIndex = slides.indexOf(firstSpan.closest('.swiper-slide')); 
+                     
+                     if (!isNaN(baseNum) && baseIndex !== -1) {
+                         const currentNum = baseNum + (index - baseIndex);
+                         const small = bigText.querySelector('small');
+                         bigText.innerHTML = currentNum + (small ? small.outerHTML : '');
+                     }
+                 }
+             }
+          };
+
+          wrapper.addEventListener('scroll', updateSlider, { passive: true });
+
+          // Ensure it scrolls to correct position when this step becomes visible
+          const observer = new IntersectionObserver((entries) => {
+              entries.forEach(entry => {
+                  if (entry.isIntersecting && activeSlide) {
+                      setTimeout(() => {
+                         const centerPos = activeSlide.offsetLeft - (wrapper.offsetWidth / 2) + (activeSlide.offsetWidth / 2);
+                         wrapper.scrollLeft = centerPos;
+                      }, 50);
+                  }
+              });
+          });
+          observer.observe(stepEl);
+      });
       
     });
   });
-</script>`;
+</script>
+<style>
+.custom-hide-scroll::-webkit-scrollbar { display: none; }
+.custom-hide-scroll { -ms-overflow-style: none; scrollbar-width: none; cursor: grab; }
+.custom-hide-scroll:active { cursor: grabbing; }
+</style>`;
 
-html = html.replace(/<script>\s*window\.addEventListener\('DOMContentLoaded'[\s\S]*?<\/script>/, newScript);
+html = html.replace(/<script>\s*window\.addEventListener\('DOMContentLoaded'[\s\S]*?(?:<\/script>\s*<style>[\s\S]*?<\/style>|<\/script>)/, newScript);
 
 fs.writeFileSync('index.html', html, 'utf8');
 console.log('SPA script fixed');
