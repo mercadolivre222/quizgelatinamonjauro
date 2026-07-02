@@ -42,12 +42,8 @@ const newScript = `<script>
       }
     }
 
-    // Force hide all steps except step-0 initially (assuming step-0 is the first)
-    // Actually the HTML might have them visible/hidden by default, we just manage them.
-    
     document.querySelectorAll('div[id^="step-"]').forEach((stepEl) => {
       // --- 1. Fix Back Button ---
-      // Find back buttons (look for arrowLeft svg or text 'voltar'/'back')
       const allButtons = Array.from(stepEl.querySelectorAll('button, a, div[role="button"]'));
       const backButtons = allButtons.filter(el => 
         el.innerHTML.includes('arrowLeft') || 
@@ -56,9 +52,7 @@ const newScript = `<script>
       );
 
       backButtons.forEach(btn => {
-        // Strip native onclick
         btn.removeAttribute('onclick');
-        // Replace with clone to remove native event listeners
         const clone = btn.cloneNode(true);
         btn.parentNode.replaceChild(clone, btn);
         clone.addEventListener('click', (e) => {
@@ -69,10 +63,8 @@ const newScript = `<script>
       });
 
       // --- 2. Fix Quiz Options ---
-      // Find options (classes containing option-background)
       const options = Array.from(stepEl.querySelectorAll('.option-background-default, .option-background-contrast, .option-background-bubble, .option-background-fetured, .btn-theme'));
       
-      // Also some options might just be buttons that are not back or continuar
       const otherButtons = allButtons.filter(el => 
         !el.innerHTML.includes('arrowLeft') && 
         !el.textContent.trim().toLowerCase().includes('continuar') &&
@@ -82,80 +74,76 @@ const newScript = `<script>
       
       const allOptions = Array.from(new Set([...options, ...otherButtons]));
 
+      // Options just toggle selection, do not advance.
+      allOptions.forEach(opt => {
+        opt.removeAttribute('onclick');
+        const clone = opt.cloneNode(true);
+        opt.parentNode.replaceChild(clone, opt);
+        
+        clone.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          // Remove selected from others if single choice (optional), but let's toggle
+          if (clone.classList.contains('selected')) {
+            clone.classList.remove('selected');
+            clone.style.opacity = '1';
+            clone.style.transform = 'scale(1)';
+            clone.style.border = '';
+          } else {
+            clone.classList.add('selected');
+            clone.style.opacity = '0.7';
+            clone.style.transform = 'scale(0.98)';
+            clone.style.border = '2px solid #a855f7';
+          }
+        });
+      });
+
       // --- 3. Fix Continuar Button ---
-      const continuarButtons = allButtons.filter(el => 
+      let continuarButtons = allButtons.filter(el => 
         el.textContent.trim().toLowerCase().includes('continuar')
       );
 
-      if (continuarButtons.length > 0) {
-        // Step HAS a Continuar button. Options just toggle selection, do not advance.
-        allOptions.forEach(opt => {
-          // Remove native onclick
-          opt.removeAttribute('onclick');
-          const clone = opt.cloneNode(true);
-          opt.parentNode.replaceChild(clone, opt);
-          
-          clone.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (clone.classList.contains('selected')) {
-              clone.classList.remove('selected');
-              clone.style.opacity = '1';
-              clone.style.transform = 'scale(1)';
-              clone.style.border = '';
-            } else {
-              clone.classList.add('selected');
-              clone.style.opacity = '0.7';
-              clone.style.transform = 'scale(0.98)';
-              clone.style.border = '2px solid #a855f7';
-            }
-          });
-        });
+      // If no Continuar button exists on this step, and it has options, inject one!
+      if (continuarButtons.length === 0 && allOptions.length > 0) {
+         const newBtn = document.createElement('button');
+         newBtn.textContent = 'Continuar';
+         newBtn.className = 'w-full py-4 text-white text-lg font-bold rounded-full mt-4 transition-transform shadow-[0_4px_14px_0_rgb(168,85,247,39%)] hover:shadow-[0_6px_20px_rgba(168,85,247,23%)] hover:bg-[rgba(168,85,247,0.9)] px-8 py-2 bg-[#a855f7] rounded-md text-white font-light transition duration-200 ease-linear';
+         newBtn.style.marginTop = '20px';
+         
+         // Find a good place to append it (at the end of the step content)
+         const contentDiv = stepEl.querySelector('.main-content') || stepEl.firstElementChild;
+         if (contentDiv) {
+             contentDiv.appendChild(newBtn);
+             continuarButtons.push(newBtn);
+         }
+      }
 
-        continuarButtons.forEach(btn => {
-          btn.removeAttribute('onclick');
-          const clone = btn.cloneNode(true);
-          btn.parentNode.replaceChild(clone, btn);
+      continuarButtons.forEach(btn => {
+        btn.removeAttribute('onclick');
+        const clone = btn.cloneNode(true);
+        btn.parentNode.replaceChild(clone, btn);
+        
+        clone.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const hasSelection = stepEl.querySelectorAll('.selected').length > 0;
+          const textInput = stepEl.querySelector('input[type="text"], input[type="number"], input[type="email"]');
+          const hasInput = textInput && textInput.value.trim() !== '';
           
-          clone.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const hasSelection = stepEl.querySelectorAll('.selected').length > 0;
-            const textInput = stepEl.querySelector('input[type="text"], input[type="number"], input[type="email"]');
-            const hasInput = textInput && textInput.value.trim() !== '';
-            
-            if (hasSelection || hasInput) {
-              clone.style.opacity = '0.7';
-              clone.style.transform = 'scale(0.98)';
-              setTimeout(goToNextStep, 150);
-            } else {
-              alert('Por favor, selecione uma opção ou preencha o campo para continuar.');
-            }
-          });
-        });
-      } else {
-        // Step DOES NOT have a Continuar button. Clicking an option advances immediately.
-        allOptions.forEach(opt => {
-          opt.removeAttribute('onclick');
-          const clone = opt.cloneNode(true);
-          opt.parentNode.replaceChild(clone, opt);
-          
-          clone.addEventListener('click', (e) => {
-            // Check if it's inside a slider or video, do not intercept if so!
-            // Sliders usually have images and no quiz text options.
-            // If it's a known option, we advance.
-            e.preventDefault();
-            e.stopPropagation();
+          // Allow advance if:
+          // 1. User selected something
+          // 2. Or user typed something
+          // 3. Or there are no options to select on this step (e.g. quote pages)
+          if (hasSelection || hasInput || allOptions.length === 0) {
             clone.style.opacity = '0.7';
             clone.style.transform = 'scale(0.98)';
             setTimeout(goToNextStep, 150);
-          });
+          } else {
+            alert('Por favor, selecione uma opção ou preencha o campo para continuar.');
+          }
         });
-      }
+      });
       
-      // Note: We leave the slider arrows completely untouched because they don't have text "continuar" 
-      // and they don't have text so otherButtons won't match them, 
-      // and they are not back buttons. They will retain their native behavior!
     });
   });
 </script>`;
