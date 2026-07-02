@@ -63,17 +63,8 @@ const newScript = `<script>
       });
 
       // --- 2. Fix Quiz Options ---
-      const options = Array.from(stepEl.querySelectorAll('.option-background-default, .option-background-contrast, .option-background-bubble, .option-background-fetured, .btn-theme'));
+      const allOptions = Array.from(stepEl.querySelectorAll('.option-background-default, .option-background-contrast, .option-background-bubble, .option-background-fetured, .btn-theme'));
       
-      const otherButtons = allButtons.filter(el => 
-        !el.innerHTML.includes('arrowLeft') && 
-        !el.textContent.trim().toLowerCase().includes('continuar') &&
-        !el.innerHTML.includes('M8 5v14l11-7z') && // Ignore play buttons
-        el.textContent.trim().length > 0 // Must have text
-      );
-      
-      const allOptions = Array.from(new Set([...options, ...otherButtons]));
-
       // Options just toggle selection, do not advance.
       allOptions.forEach(opt => {
         opt.removeAttribute('onclick');
@@ -83,7 +74,7 @@ const newScript = `<script>
         clone.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          // Remove selected from others if single choice (optional), but let's toggle
+          // Toggle selection
           if (clone.classList.contains('selected')) {
             clone.classList.remove('selected');
             clone.style.opacity = '1';
@@ -99,9 +90,20 @@ const newScript = `<script>
       });
 
       // --- 3. Fix Continuar Button ---
-      let continuarButtons = allButtons.filter(el => 
-        el.textContent.trim().toLowerCase().includes('continuar')
-      );
+      let continuarButtons = allButtons.filter(el => {
+         const text = el.textContent.trim().toLowerCase();
+         const isOption = allOptions.includes(el);
+         const isBack = backButtons.includes(el);
+         const isPlay = el.innerHTML.includes('M8 5v14l11-7z');
+         
+         if (isOption || isBack || isPlay) return false;
+         
+         // If it has text like Continuar/Empezar/Start, or if it's a primary button
+         if (text.includes('continuar') || text.includes('empezar') || text.includes('start') || el.tagName === 'BUTTON') {
+             return true;
+         }
+         return false;
+      });
 
       // If no Continuar button exists on this step, and it has options, inject one!
       if (continuarButtons.length === 0 && allOptions.length > 0) {
