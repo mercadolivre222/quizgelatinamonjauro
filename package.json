@@ -1,14 +1,14 @@
 {
-  "name": "quiz-gelatina",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "temp-vite",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "devDependencies": {
+    "vite": "^8.1.1"
+  }
 }
