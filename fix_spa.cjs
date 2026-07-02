@@ -302,7 +302,26 @@ const newScript = `<script>
 .custom-hide-scroll:active { cursor: grabbing; }
 </style>`;
 
-html = html.replace(/<script>\s*window\.addEventListener\('DOMContentLoaded'[\s\S]*?(?:<\/script>\s*<style>[\s\S]*?<\/style>|<\/script>)/, newScript);
+const domLoadedIdx = html.indexOf('window.addEventListener(\\'DOMContentLoaded\\'');
+let startIdx = -1;
+if (domLoadedIdx !== -1) {
+    startIdx = html.lastIndexOf('<script>', domLoadedIdx);
+}
+
+if (startIdx !== -1) {
+    let endIdx = html.indexOf('</style>', startIdx);
+    if (endIdx !== -1) {
+        html = html.substring(0, startIdx) + newScript + html.substring(endIdx + 8);
+    } else {
+        endIdx = html.indexOf('</script>', startIdx);
+        if (endIdx !== -1) {
+            html = html.substring(0, startIdx) + newScript + html.substring(endIdx + 9);
+        }
+    }
+} else {
+    // fallback if not found, just append to body
+    html = html.replace('</body>', newScript + '\\n</body>');
+}
 
 fs.writeFileSync('index.html', html, 'utf8');
 console.log('SPA script fixed');
