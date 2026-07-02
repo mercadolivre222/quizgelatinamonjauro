@@ -128,6 +128,10 @@ const newScript = `<script>
                   current.style.backgroundColor = '';
                 }
               });
+              // Uncheck other radios/checkboxes
+              stepEl.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(input => {
+                  if (!clone.contains(input)) input.checked = false;
+              });
             }
 
             if (clone.classList.contains('selected')) {
@@ -136,12 +140,16 @@ const newScript = `<script>
               clone.style.transform = 'scale(1)';
               clone.style.border = '';
               clone.style.backgroundColor = '';
+              const input = clone.querySelector('input[type="radio"], input[type="checkbox"]');
+              if (input) input.checked = false;
             } else {
               clone.classList.add('selected');
               clone.style.opacity = '0.9';
               clone.style.transform = 'scale(0.98)';
               clone.style.border = '2px solid #db2777'; // Pink 600
               clone.style.backgroundColor = '#fdf2f8'; // Pink 50
+              const input = clone.querySelector('input[type="radio"], input[type="checkbox"]');
+              if (input) input.checked = true;
             }
           });
         });
@@ -158,16 +166,31 @@ const newScript = `<script>
             const textInput = stepEl.querySelector('input[type="text"], input[type="number"], input[type="email"]');
             const hasInput = textInput && textInput.value.trim() !== '';
             
-            // Allow advance if:
-            // 1. User selected something
-            // 2. Or user typed something
-            // 3. Or there are no options to select on this step (e.g. quote pages, landing page)
-            if (hasSelection || hasInput || allOptions.length === 0) {
+            let canAdvance = false;
+            let errorMsg = 'Por favor, selecione uma opção ou preencha o campo para continuar.';
+
+            if (textInput) {
+                // If there's a text input, it MUST be filled
+                if (hasInput) {
+                    canAdvance = true;
+                } else {
+                    errorMsg = 'Por favor, preencha o campo para continuar.';
+                }
+            } else {
+                // No text input. We need either a selection or no options at all (e.g. quote pages)
+                if (hasSelection || allOptions.length === 0) {
+                    canAdvance = true;
+                } else {
+                    errorMsg = 'Por favor, selecione uma opção para continuar.';
+                }
+            }
+            
+            if (canAdvance) {
               clone.style.opacity = '0.7';
               clone.style.transform = 'scale(0.98)';
               setTimeout(goToNextStep, 150);
             } else {
-              alert('Por favor, selecione uma opção ou preencha o campo para continuar.');
+              alert(errorMsg);
             }
           });
         });
