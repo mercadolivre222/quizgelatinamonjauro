@@ -302,7 +302,7 @@ const newScript = `<script>
 .custom-hide-scroll:active { cursor: grabbing; }
 </style>`;
 
-const domLoadedIdx = html.indexOf('window.addEventListener(\\'DOMContentLoaded\\'');
+const domLoadedIdx = html.indexOf("window.addEventListener('DOMContentLoaded'");
 let startIdx = -1;
 if (domLoadedIdx !== -1) {
     startIdx = html.lastIndexOf('<script>', domLoadedIdx);
