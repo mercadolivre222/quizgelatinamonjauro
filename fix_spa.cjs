@@ -105,46 +105,85 @@ const newScript = `<script>
          return false;
       });
 
-      // If no Continuar button exists on this step, and it has options, inject one!
-      if (continuarButtons.length === 0 && allOptions.length > 0) {
-         const newBtn = document.createElement('button');
-         newBtn.textContent = 'Continuar';
-         newBtn.className = 'w-full py-4 text-white text-lg font-bold rounded-full mt-4 transition-transform shadow-[0_4px_14px_0_rgb(168,85,247,39%)] hover:shadow-[0_6px_20px_rgba(168,85,247,23%)] hover:bg-[rgba(168,85,247,0.9)] px-8 py-2 bg-[#a855f7] rounded-md text-white font-light transition duration-200 ease-linear';
-         newBtn.style.marginTop = '20px';
-         
-         // Find a good place to append it (at the end of the step content)
-         const contentDiv = stepEl.querySelector('.main-content') || stepEl.firstElementChild;
-         if (contentDiv) {
-             contentDiv.appendChild(newBtn);
-             continuarButtons.push(newBtn);
-         }
-      }
-
-      continuarButtons.forEach(btn => {
-        btn.removeAttribute('onclick');
-        const clone = btn.cloneNode(true);
-        btn.parentNode.replaceChild(clone, btn);
-        
-        clone.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const hasSelection = stepEl.querySelectorAll('.selected').length > 0;
-          const textInput = stepEl.querySelector('input[type="text"], input[type="number"], input[type="email"]');
-          const hasInput = textInput && textInput.value.trim() !== '';
+      if (continuarButtons.length > 0) {
+        // Step HAS a Continuar button. Options just toggle selection, do not advance.
+        allOptions.forEach(opt => {
+          opt.removeAttribute('onclick');
+          const clone = opt.cloneNode(true);
+          opt.parentNode.replaceChild(clone, opt);
           
-          // Allow advance if:
-          // 1. User selected something
-          // 2. Or user typed something
-          // 3. Or there are no options to select on this step (e.g. quote pages)
-          if (hasSelection || hasInput || allOptions.length === 0) {
-            clone.style.opacity = '0.7';
-            clone.style.transform = 'scale(0.98)';
-            setTimeout(goToNextStep, 150);
-          } else {
-            alert('Por favor, selecione uma opção ou preencha o campo para continuar.');
-          }
+          clone.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (clone.classList.contains('selected')) {
+              clone.classList.remove('selected');
+              clone.style.opacity = '1';
+              clone.style.transform = 'scale(1)';
+              clone.style.border = '';
+              clone.style.backgroundColor = '';
+            } else {
+              clone.classList.add('selected');
+              clone.style.opacity = '0.9';
+              clone.style.transform = 'scale(0.98)';
+              clone.style.border = '2px solid #db2777'; // Pink 600
+              clone.style.backgroundColor = '#fdf2f8'; // Pink 50
+            }
+          });
         });
-      });
+
+        continuarButtons.forEach(btn => {
+          btn.removeAttribute('onclick');
+          const clone = btn.cloneNode(true);
+          btn.parentNode.replaceChild(clone, btn);
+          
+          clone.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const hasSelection = stepEl.querySelectorAll('.selected').length > 0;
+            const textInput = stepEl.querySelector('input[type="text"], input[type="number"], input[type="email"]');
+            const hasInput = textInput && textInput.value.trim() !== '';
+            
+            // Allow advance if:
+            // 1. User selected something
+            // 2. Or user typed something
+            // 3. Or there are no options to select on this step (e.g. quote pages, landing page)
+            if (hasSelection || hasInput || allOptions.length === 0) {
+              clone.style.opacity = '0.7';
+              clone.style.transform = 'scale(0.98)';
+              setTimeout(goToNextStep, 150);
+            } else {
+              alert('Por favor, selecione uma opção ou preencha o campo para continuar.');
+            }
+          });
+        });
+      } else {
+        // Step DOES NOT have a Continuar button. Clicking an option selects it (pink) and advances after 500ms!
+        allOptions.forEach(opt => {
+          opt.removeAttribute('onclick');
+          const clone = opt.cloneNode(true);
+          opt.parentNode.replaceChild(clone, opt);
+          
+          clone.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Unselect others for single-choice feel by querying the live DOM
+            stepEl.querySelectorAll('.selected').forEach(current => {
+              current.classList.remove('selected');
+              current.style.border = '';
+              current.style.backgroundColor = '';
+            });
+            
+            clone.classList.add('selected');
+            clone.style.opacity = '0.9';
+            clone.style.transform = 'scale(0.98)';
+            clone.style.border = '2px solid #db2777'; // Pink 600
+            clone.style.backgroundColor = '#fdf2f8'; // Pink 50
+            
+            setTimeout(goToNextStep, 500);
+          });
+        });
+      }
       
     });
   });
